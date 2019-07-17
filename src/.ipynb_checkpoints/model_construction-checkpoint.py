@@ -4,21 +4,15 @@ import pandas as pd
 import numpy as np
 import sklearn
 import catboost as cat
-from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import KFold
+import matplotlib.pyplot as plt
+import seaborn as sns
+import xgboost as xgb
 
-def encode_categorical(df_train, df_test, column_list):
-    for f in column_list:
-        df_train[f] = df_train[f].to_string()
-        df_test[f] = df_test[f].to_string()        
-        print(f'{f} column is being transformed ...')
-        lbl = LabelEncoder()
-        lbl.fit(list(df_train[f].values) + list(df_test[f].values))
-        df_train[f] = lbl.transform(list(df_train[f].values))
-        df_test[f] = lbl.transform(list(df_test[f].values))
 
+# Split target variable and remove all unnecessary columns
 def prepare_data_split(df_train, df_test, target, rem_cols):
     rem_cols.append(target)
     X = df_train.drop(rem_cols, axis=1)
@@ -27,7 +21,20 @@ def prepare_data_split(df_train, df_test, target, rem_cols):
     X_test = df_test.drop(rem_cols, axis=1)
     return [X, Y, X_test]
 
+# show a pic of important variables and save the list to csv
+def show_varimp(fit_model, X):
+        feature_imp = pd.DataFrame(sorted(zip(fit_model.feature_importances_,X.columns)), columns=['Value','Feature'])
+        plt.figure(figsize=(20, 10))
+        sns.barplot(x="Value", y="Feature", data=feature_imp.sort_values(by="Value", ascending=False))
+        plt.title(f'LightGBM Features of Model')
+        plt.tight_layout()
+        plt.show()
+        plt.savefig(f'varImp/lgbm_importance.png')
+        varimps = pd.DataFrame(feature_imp.sort_values(by="Value", ascending=False))
+        varimps.to_csv(f'varImp/lgbm_importance.csv', index = False)
 
+# Run the model: k fold cross validation, custom metric and different problems (calssification and regression). 
+# Currently only LightGBM and CatBoost are supported
 def run_model(X, Y, X_test, n_folds, problem_type = 'regression', model_type = 'LGBM', metric_func = roc_auc_score, params = None):
     kf = KFold(n_splits = n_folds, random_state = 1, shuffle = True)
     scores = []
@@ -56,6 +63,11 @@ def run_model(X, Y, X_test, n_folds, problem_type = 'regression', model_type = '
             if model_type == 'LGBM':
                 fit_model = lgb.LGBMClassifier(**params)
                 fit_model.fit(X_train, Y_train)
+            
+            elif model_type == 'XGBoost':
+                fit_model = xgb.XGBClassifier(**params)
+                fit_model.fit(X_train, Y_train)
+                
             else: 
                 print(f'{model_type} for classification is not yet supported')
         
@@ -75,5 +87,23 @@ def run_model(X, Y, X_test, n_folds, problem_type = 'regression', model_type = '
     print(f'The average score accross the folds is {ave_score}')
     
     submit_pred = fit_model.predict(X_test)
+    
+    print(f'Displaying variable importance ...')
+    show_varimp(fit_model, X)
         
-    return [submit_pred, ave_score]
+    return [submit_pred, ave_score, fit_model]
+
+def blend_results(df1, df2, _id, target, proport1 = 0.6):
+    target1 = target + '_x'
+    target2 = target + '_y'
+    df1 = df1.merge(df2, on = 'id')
+    
+    dif = (df1[target1] - df1[target2]).abs().mean()
+    print(f'the mean absolute difference between 2 submissions is: {dif}')
+    
+    df1[target] = (proport*df1[target1] + (1-proport)*df1[target2])
+    
+    df = df1[[_id, target]]
+    
+    return df
+
