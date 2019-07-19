@@ -14,15 +14,16 @@ import xgboost as xgb
 
 class modelBuilder: 
 
-    def __init__(self):
-        self.path = path
+    def __init__(self, problem_type, model_type):
+        self.problem_type = problem_type
+        self.model_type = model_type
     
 
     # Split target variable and remove all unnecessary columns
-    def prepare_data_split(self, df_train, df_test, target, rem_cols, useVarImp = False):
+    def prepare_data_split(self, df_train, df_test, target, rem_cols, useVarImp = False, varimp_threshold = 100):
         if useVarImp:
             varImp = pd.read_csv(f'varImp/lgbm_importance.csv')
-            varImp = varImp[varImp.Value >= 100]
+            varImp = varImp[varImp.Value >= varimp_threshold]
             varImpCount = varImp["Feature"].nunique() 
             varImpUnique = list(varImp['Feature'].unique())
             varImpUnique.extend(rem_cols)
@@ -42,6 +43,8 @@ class modelBuilder:
         Y = df_train[target]
         rem_cols.remove(target)
         X_test = df_test.drop(rem_cols, axis=1)
+        
+        print(f'{X.shape[1]} features have been chosen for modeling')
         return [X, Y, X_test]
 
     # show a pic of important variables and save the list to csv
@@ -61,7 +64,7 @@ class modelBuilder:
 
     # Run the model: k fold cross validation, custom metric and different problems (calssification and regression). 
     # Currently only LightGBM and CatBoost are supported
-    def run_model(self, X, Y, X_test, n_folds, problem_type = 'regression', model_type = 'LGBM', metric_func = roc_auc_score, get_probab = False, save_varimp = False, params = None):
+    def run_model(self, X, Y, X_test, n_folds, metric_func = roc_auc_score, get_probab = False, save_varimp = False, params = None):
         kf = KFold(n_splits = n_folds, random_state = 1, shuffle = True)
         scores = []
         submit_pred = np.zeros(X_test.shape[0])
@@ -72,34 +75,34 @@ class modelBuilder:
 
             print( f'Fold: {i}')
 
-            if problem_type == 'regression':
+            if self.problem_type == 'regression':
 
-                if model_type == 'LGBM':
+                if self.model_type == 'LGBM':
                     fit_model = lgb.LGBMRegressor(**params)
                     fit_model.fit(X_train, Y_train)
 
-                elif model_type == 'CatBoost':
+                elif self.model_type == 'CatBoost':
                     fit_model = cat.CatBoostRegressor(**params)                                                    
                     fit_model.fit(X_train, Y_train,  verbose = False)
 
                 else : 
                      print(f'This {model_type} is not yet supported!')
 
-            elif problem_type == 'classification':
+            elif self.problem_type == 'classification':
 
-                if model_type == 'LGBM':
+                if self.model_type == 'LGBM':
                     fit_model = lgb.LGBMClassifier(**params)
                     fit_model.fit(X_train, Y_train)
 
-                elif model_type == 'XGBoost':
+                elif self.model_type == 'XGBoost':
                     fit_model = xgb.XGBClassifier(**params)
                     fit_model.fit(X_train, Y_train)
 
                 else: 
-                    print(f'{model_type} for classification is not yet supported')
+                    print(f'{self.model_type} for classification is not yet supported')
 
             else: 
-                print(f'{problem_type} type of a problem solving is not yet supported')
+                print(f'{self.problem_type} type of a problem solving is not yet supported')
 
             if get_probab:
                 pred = fit_model.predict_proba(X_valid)[:,1]
@@ -121,7 +124,7 @@ class modelBuilder:
 
         if save_varimp:
             print(f'Displaying variable importance ...')
-            show_varimp(fit_model, X)
+            self.show_varimp(fit_model, X)
         else:
             pass        
         return [submit_pred, ave_score, fit_model]

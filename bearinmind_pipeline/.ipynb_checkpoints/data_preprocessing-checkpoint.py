@@ -1,5 +1,6 @@
 import sklearn
 from sklearn.preprocessing import LabelEncoder
+import pandas as pd
 
 class dataPreprocessing:
 
@@ -54,17 +55,19 @@ class dataPreprocessing:
         return[df_train, df_test]
 
     # Parse string column based on the characted and position of the element
-    def parse_str_col(df, str_col, parse_by, n_element):
-        parsed_col = df[str_col].str.split(parse_by).str.get(n_element)
-
-        return parsed_col
+    def parse_str_col(df, str_col_list, parse_by, n_element):
+        for str_col in str_col_list:
+            df[str_col] = df[str_col].str.split(parse_by).str.get(n_element)
+        return df
 
     # Create basic stats variables based on the group category as well as nominator for proportions 
     def create_stats_features(df, nominator, groupby):
-        df[f'{nominator}_by_{groupby}_std'] = df.groupby(groupby)[nominator].transform('std')
-        df[f'{nominator}_by_{groupby}_mean'] = df.groupby(groupby)[nominator].transform('mean')
-        df[f'{nominator}_by_{groupby}_median'] = df.groupby(groupby)[nominator].transform('median')
-        df[f'{nominator}_by_{groupby}_max'] = df.groupby(groupby)[nominator].transform('max')
-        df[f'{nominator}_by_{groupby}_min'] = df.groupby(groupby)[nominator].transform('min')
+        grp = '_'.join(groupby)
+        
+        df[f'{nominator}_by_{grp}_std'] = df[nominator]/df.groupby(groupby)[nominator].transform('std')
+        df[f'{nominator}_by_{grp}_mean'] = df[nominator]/df.groupby(groupby)[nominator].transform('mean')
+        df[f'{nominator}_by_{grp}_median'] = df[nominator]/df.groupby(groupby)[nominator].transform('median')
+        df[f'{nominator}_by_{grp}_max'] = df[nominator]/df.groupby(groupby)[nominator].transform('max')
+        df[f'{nominator}_by_{grp}_min'] = df[nominator]/df.groupby(groupby)[nominator].transform('min')
 
         return df
