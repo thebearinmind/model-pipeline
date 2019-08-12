@@ -10,6 +10,7 @@ from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 import seaborn as sns
 import xgboost as xgb
+from imblearn.over_sampling import SMOTE
 
 
 class modelBuilder: 
@@ -45,7 +46,12 @@ class modelBuilder:
         X_test = df_test.drop(rem_cols, axis=1)
         
         print(f'{X.shape[1]} features have been chosen for modeling')
-        return [X, Y, X_test]
+        
+        prep_data = {'X': X,
+                     'Y': Y,
+                     'X_test':X_test}
+        
+        return prep_data
 
     # show a pic of important variables and save the list to csv
     def show_varimp(self, fit_model, X):
@@ -64,7 +70,11 @@ class modelBuilder:
 
     # Run the model: k fold cross validation, custom metric and different problems (calssification and regression). 
     # Currently only LightGBM and CatBoost are supported
-    def run_model(self, X, Y, X_test, n_folds, metric_func = roc_auc_score, get_probab = False, save_varimp = False, params = None):
+    def run_model(self, prep_data, n_folds, metric_func = roc_auc_score, get_probab = False, save_varimp = False, params = None, oversmp = False):
+        X = prep_data['X']
+        Y = prep_data['Y']
+        X_test = prep_data['X_test']
+        
         kf = KFold(n_splits = n_folds, random_state = 1, shuffle = True)
         scores = []
         submit_pred = np.zeros(X_test.shape[0])
@@ -72,7 +82,15 @@ class modelBuilder:
             # Create data for this fold
             Y_train, Y_valid = Y.iloc[train_index].copy(), Y.iloc[test_index].copy()
             X_train, X_valid = X.iloc[train_index,:].copy(), X.iloc[test_index,:].copy()
-
+            
+            if oversmp:
+                sm = SMOTE(random_state=12, ratio = 1.0)
+                x_train_res, y_train_res = sm.fit_sample(X_train,  Y_train)
+                X_train = pd.DataFrame(x_train_res)
+                Y_train = pd.Series(y_train_res)
+            else:
+                pass
+                
             print( f'Fold: {i}')
 
             if self.problem_type == 'regression':

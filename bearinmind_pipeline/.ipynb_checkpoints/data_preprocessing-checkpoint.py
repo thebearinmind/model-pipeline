@@ -52,7 +52,9 @@ class dataPreprocessing:
             df_train[f] = lbl.transform(list(df_train[f].values))
             df_test[f] = lbl.transform(list(df_test[f].values))
 
-        return[df_train, df_test]
+        encoded_cat_df = {'df_train': df_train,
+                         'df_test': df_test}
+        return encoded_cat_df
 
     # Parse string column based on the characted and position of the element
     def parse_str_col(df, str_col_list, parse_by, n_element):
