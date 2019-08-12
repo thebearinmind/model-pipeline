@@ -9,6 +9,11 @@ class dataPreprocessing:
         
     # Reduce memory needed for the data frame by changing int and float formats
     def reduce_mem(df):
+        """
+        Reduction of the required memory.
+        
+        """
+        
         start_mem = df.memory_usage().sum() / 1024**2
         print('Memory usage of dataframe is {:.2f} MB'.format(start_mem))
 
@@ -41,10 +46,12 @@ class dataPreprocessing:
         print('Memory usage after optimization is: {:.2f} MB'.format(end_mem))
         print('Decreased by {:.1f}%'.format(100 * (start_mem - end_mem) / start_mem))
 
-
-
-    # Encode categorical variables based on the column list
+ 
     def encode_categorical(df_train, df_test, column_list):
+        """
+        Encode categorical variables based on the column list.
+        
+        """
         for f in column_list:
             print(f'colums {f} is being encoded')
             lbl = LabelEncoder()
@@ -54,16 +61,24 @@ class dataPreprocessing:
 
         encoded_cat_df = {'df_train': df_train,
                          'df_test': df_test}
+        
         return encoded_cat_df
 
-    # Parse string column based on the characted and position of the element
     def parse_str_col(df, str_col_list, parse_by, n_element):
+        """
+        Parse string column based on the characted and position of the element.
+        
+        """
         for str_col in str_col_list:
             df[str_col] = df[str_col].str.split(parse_by).str.get(n_element)
+        
         return df
 
-    # Create basic stats variables based on the group category as well as nominator for proportions 
     def create_stats_features(df, nominator, groupby):
+        """
+        Create basic stats variables based on the group category as well as nominator for proportions. 
+        
+        """
         grp = '_'.join(groupby)
         
         df[f'{nominator}_by_{grp}_std'] = df[nominator]/df.groupby(groupby)[nominator].transform('std')

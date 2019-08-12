@@ -7,6 +7,15 @@ class resultsBlender:
         self.path_df2 = path_df2
     
     def blend_results(self, _id, target, proport1 = 0.6):
+        """
+        Ensemble output of two models based on the above specified proportions.
+        
+        _id is required for the join of two data sets.
+        
+        target conveys the predition which will be blended
+        
+        """
+        
         df1 = pd.read_csv(self.path_df1)
         df2 = pd.read_csv(self.path_df2)
         target1 = target + '_x'

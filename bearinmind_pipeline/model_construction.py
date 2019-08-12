@@ -20,10 +20,19 @@ class modelBuilder:
         self.model_type = model_type
     
 
-    # Split target variable and remove all unnecessary columns
+    
     def prepare_data_split(self, df_train, df_test, target, rem_cols, useVarImp = False, varimp_threshold = 100):
+        """
+        Split target variable and remove all unnecessary columns
+        
+        in case useVarImp is set to True, features will be filered out by the list of the variable importances and 
+        the specified threshold. This can olny be done if there was one round of iteration of the model and 
+        variable importances were saved in varImp directory.        
+        
+        """
+        
         if useVarImp:
-            varImp = pd.read_csv(f'varImp/lgbm_importance.csv')
+            varImp = pd.read_csv(f'varImp/{self.model_type}_importance.csv')
             varImp = varImp[varImp.Value >= varimp_threshold]
             varImpCount = varImp["Feature"].nunique() 
             varImpUnique = list(varImp['Feature'].unique())
@@ -53,8 +62,14 @@ class modelBuilder:
         
         return prep_data
 
-    # show a pic of important variables and save the list to csv
+    
     def show_varimp(self, fit_model, X):
+            """
+            Save the list of the variable importance to the varImp directory. Additionally, the plot with the imporances will be
+            displayed in the console.            
+            
+            """
+            
             if not os.path.exists('varImp'):
                 os.makedirs('varImp')
 
@@ -68,9 +83,20 @@ class modelBuilder:
             varimps = pd.DataFrame(feature_imp.sort_values(by="Value", ascending=False))
             varimps.to_csv(f'varImp/lgbm_importance.csv', index = False)
 
-    # Run the model: k fold cross validation, custom metric and different problems (calssification and regression). 
-    # Currently only LightGBM and CatBoost are supported
+
     def run_model(self, prep_data, n_folds, metric_func = roc_auc_score, get_probab = False, save_varimp = False, params = None, oversmp = False):
+        """
+        The model based on the problem type (regression or classification) as well as chosen algorithm (e.g. LightGBM) will be run across specified
+        number of K folds. The metric will be displayed and saved in a list for each single fold. The final score with be represented as an average 
+        over the folds.
+        
+        In case of classification problem, the flag get_probab = True will return probabilities for each class.
+        
+        In addition, if oversample is set to true, the positive class will be oversampled based on SMOTE algorithm.
+        
+        save_varimp pararmeter set to True, saves variable importance of the model to the varImp directory.
+        """
+        
         X = prep_data['X']
         Y = prep_data['Y']
         X_test = prep_data['X_test']
@@ -78,6 +104,7 @@ class modelBuilder:
         kf = KFold(n_splits = n_folds, random_state = 1, shuffle = True)
         scores = []
         submit_pred = np.zeros(X_test.shape[0])
+        
         for i, (train_index, test_index) in enumerate(kf.split(X, Y)):
             # Create data for this fold
             Y_train, Y_valid = Y.iloc[train_index].copy(), Y.iloc[test_index].copy()
@@ -104,7 +131,7 @@ class modelBuilder:
                     fit_model.fit(X_train, Y_train,  verbose = False)
 
                 else : 
-                     print(f'This {model_type} is not yet supported!')
+                     print(f'This {self.model_type} is not yet supported!')
 
             elif self.problem_type == 'classification':
 
@@ -143,9 +170,18 @@ class modelBuilder:
         if save_varimp:
             print(f'Displaying variable importance ...')
             self.show_varimp(fit_model, X)
+        
         else:
             pass        
-        return [submit_pred, ave_score, fit_model]
+        
+        model_result = {
+            'FinalPrediction': submit_pred,
+            'AverageScore' : ave_score,
+            'FinalModel' : fit_model      
+        }
+        
+        
+        return model_result
 
 
 
