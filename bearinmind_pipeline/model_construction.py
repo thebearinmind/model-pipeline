@@ -84,7 +84,8 @@ class modelBuilder:
             varimps.to_csv(f'varImp/lgbm_importance.csv', index = False)
 
 
-    def run_model(self, prep_data, n_folds, metric_func = roc_auc_score, get_probab = False, save_varimp = False, params = None, oversmp = False, verbose = 2):
+    def run_model(self, prep_data, n_folds, metric_func = roc_auc_score, get_probab = False, save_varimp = False, params = None, oversmp = False, verbose = 2, 
+                  cv_shuffle = True):
         """
         The model based on the problem type (regression or classification) as well as chosen algorithm (e.g. LightGBM) will be run across specified
         number of K folds. The metric will be displayed and saved in a list for each single fold. The final score with be represented as an average 
@@ -101,7 +102,7 @@ class modelBuilder:
         Y = prep_data['Y']
         X_test = prep_data['X_test']
         
-        kf = KFold(n_splits = n_folds, random_state = 1, shuffle = True)
+        kf = KFold(n_splits = n_folds, random_state = 1, shuffle = cv_shuffle)
         scores = []
         submit_pred = np.zeros((X_test.shape[0],1))
         
