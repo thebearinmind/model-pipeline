@@ -83,18 +83,12 @@ class modelBuilder:
             plt.savefig(f'varImp/lgbm_importance.png')
             varimps = pd.DataFrame(feature_imp.sort_values(by="Value", ascending=False))
             varimps.to_csv(f'varImp/lgbm_importance.csv', index = False)
-    
-    def hyperparam_tuning(self, prep_data, search_type, param_grid, n_iter_hp, metric, n_folds, params = None):
+            
+    def choose_model(self, problem_type, model_type, params=None):
         """
-        Function to enable hyperparameters tunning. 
-        
-        Allowed type of searches: randomized, grid.
+        Function to choose the algorithm for training. 
         
         """
-        X = prep_data['X']
-        Y = prep_data['Y']
-        X_test = prep_data['X_test']
-        
         if self.problem_type == 'regression':
             
             if self.model_type == 'LGBM':
@@ -122,6 +116,21 @@ class modelBuilder:
 
         else: 
             print(f'{self.problem_type} type of a problem solving is not yet supported')
+            
+        return(fit_model)
+    
+    def hyperparam_tuning(self, prep_data, search_type, param_grid, n_iter_hp, metric, n_folds, params = None):
+        """
+        Function to enable hyperparameters tunning. 
+        
+        Allowed type of searches: randomized, grid.
+        
+        """
+        X = prep_data['X']
+        Y = prep_data['Y']
+        X_test = prep_data['X_test']
+        
+        fit_model = self.choose_model(problem_type= self.problem_type, model_type=self.model_type, params=params)
         
         if search_type == 'randomized':
         
@@ -182,33 +191,7 @@ class modelBuilder:
                 
             print( f'Fold: {i}')
 
-            if self.problem_type == 'regression':
-
-                if self.model_type == 'LGBM':
-                    fit_model = lgb.LGBMRegressor(**params)
-                    
-                elif self.model_type == 'CatBoost':
-                    fit_model = cat.CatBoostRegressor(**params)                                                    
-                
-                elif self.model_type == 'XGBoost':
-                    fit_model = xgb.XGBRegressor(**params)
-
-                else : 
-                     print(f'This {self.model_type} is not yet supported!')
-
-            elif self.problem_type == 'classification':
-
-                if self.model_type == 'LGBM':
-                    fit_model = lgb.LGBMClassifier(**params, verbose = verbose)
-
-                elif self.model_type == 'XGBoost':
-                    fit_model = xgb.XGBClassifier(**params)
-
-                else: 
-                    print(f'{self.model_type} for classification is not yet supported')
-
-            else: 
-                print(f'{self.problem_type} type of a problem solving is not yet supported')
+            fit_model = self.choose_model(problem_type= self.problem_type, model_type=self.model_type, params=params)
 
             if hyperparam_tunning:
                 fit_model = gs.best_estimator_
